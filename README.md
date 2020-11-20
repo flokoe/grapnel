@@ -1,2 +1,2 @@
-# grapnel
-A simple webhook service which executes local commands
+# hooked
+A simple, general purpose webhook service which executes local commands.
