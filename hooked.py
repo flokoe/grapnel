@@ -6,8 +6,8 @@ A simple, general purpose webhook service which executes local commands.
 License: MIT (see LICENSE for details)
 """
 
-import sys, functools, hmac, hashlib, json
-from bottle import error, post, auth_basic, request, run, HTTPError
+import sys, functools, hmac, hashlib
+from bottle import error, post, request, run, HTTPError
 
 __author__  = 'Florian Köhler'
 __version__ = '0.0.1'
@@ -21,9 +21,7 @@ def _cli_parse(args):
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("-b", "--bind", metavar="ADDRESS", default="localhost", type=str, help="bind service to ADDRESS (Default: localhost)")
     parser.add_argument("-p", "--port", default=8080, type=int, help="bind service to PORT (Default: 8080)")
-    parser.add_argument("-a", "--adapter", default="github", type=str, help="use adapter ADAPTER. Currently 'github' (default) and 'generic'")
-    parser.add_argument("-s", "--secret", type=str, help="secret SECRET for calculating 'X-Hub-Signature-256' header (required if adapter is 'github')")
-    parser.add_argument("-t", "--token", type=str, help="token for 'Authorization' header (optional and only if adapter is 'generic')")
+    parser.add_argument("-s", "--secret", type=str, help="secret for calculating 'X-Hub-Signature' and 'X-Hub-Signature-256' header or to use as a token in 'Authorization' header")
     parser.add_argument("-d", "--domain", type=str, help="domain/hostname which should be present in 'Host' header")
     parser.add_argument("-u", "--userauth", type=str, help="basic auth credentials in form of 'user:password'")
 
@@ -54,12 +52,35 @@ def my_basic_auth(check, realm="private", text="Access denied"):
                     return err
                 return func(*a, **ka)
             else:
-                print("no auth required")
+                print("No basic auth required.")
                 return func(*a, **ka)
 
         return wrapper
 
     return decorator
+
+def secret_check(header):
+    if not conf.secret:
+        print(f"'{header}' found, but no secret is specified.")
+
+def signature_check(header):
+    secret_check(header)
+
+    signature = request.headers.get(header).split("=")
+
+    def algo(al):
+        if al == 'sha256':
+            return hashlib.sha256
+        else:
+            return hashlib.sha1
+
+    h = hmac.new(bytes(conf.secret, 'utf-8'), request.body.read(), algo(signature[0]))
+    local_hash = h.hexdigest()
+
+    if signature[1] == local_hash:
+        print(f'Authorized with {signature[0]}')
+    else:
+        print("Authorization failed.")
 
 @error(404)
 def error404(error):
@@ -68,20 +89,24 @@ def error404(error):
 @post('/payload')
 @my_basic_auth(is_authenticated_user)
 def payload():
-    if conf.adapter == 'github':
-        if not conf.secret:
-            print("Adapter is 'github', but no secret is specified.")
-            print("Exiting.")
-            sys.exit(1)
+    if request.headers.get('X-Hub-Signature-256'):
+        signature_check('X-Hub-Signature-256')
 
-        signature_header = request.headers.get('X-Hub-Signature-256')
-        github_hash = signature_header.split("=")
+    elif request.headers.get('X-Hub-Signature'):
+        signature_check('X-Hub-Signature')
 
-        h = hmac.new(bytes(conf.secret, 'utf-8'), request.body.read(), hashlib.sha256)
-        local_hash = h.hexdigest()
+    elif request.headers.get('Authorization'):
+        secret_check('Authorization')
 
-        if github_hash[1] == local_hash:
-            print("verifiziert")
+        token = request.headers.get('Authorization').split()
+
+        if token[1] == conf.secret:
+            print("Authorized with token.")
+        else:
+            print("Authorization failed.")
+
+    else:
+        print("No authorization.")
 
 if __name__ == '__main__':
     conf = _cli_parse(sys.argv)
