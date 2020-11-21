@@ -1,6 +1,6 @@
 # hooked
 
-A simple, general purpose webhook service which executes local commands.
+A simple, general purpose webhook service which executes local commands via sudo.
 
 ## Requirements
 
