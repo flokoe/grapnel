@@ -6,7 +6,7 @@ A simple, general purpose webhook service which executes local commands.
 License: MIT (see LICENSE for details)
 """
 
-import sys, functools, hmac, hashlib
+import sys, functools, hmac, hashlib, json
 from bottle import error, post, auth_basic, request, run, HTTPError
 
 __author__  = 'Florian Köhler'
@@ -74,9 +74,9 @@ def payload():
             print("Exiting.")
             sys.exit(1)
 
-        h = hmac.new(conf.secret, request.json, hashlib.sha256)
+        h = hmac.new(bytes(conf.secret, 'utf-8'), json.dumps(request.json).encode('utf-8'), hashlib.sha256)
         print("Git Hub:", request.headers.get('X-Hub-Signature-256'))
-        print("my hash:", h.hexdigest())
+        print("my hash:", "sha256=" + h.hexdigest())
 
 if __name__ == '__main__':
     conf = _cli_parse(sys.argv)
