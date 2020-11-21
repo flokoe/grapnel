@@ -7,7 +7,7 @@ License: MIT (see LICENSE for details)
 """
 
 import sys
-from bottle import error, post, request, run
+from bottle import error, post, auth_basic, request, run
 
 __author__  = 'Florian Köhler'
 __version__ = '0.0.1'
@@ -30,6 +30,21 @@ def _cli_parse(args):
     return parser.parse_args(args[1:])
 
 # Bottle logic
+
+def is_authenticated_user(user, password):
+    if conf.userauth:
+        creds = conf.userauth.split(":")
+
+        if user == creds[0] and password == creds[1]:
+            print("Basic Auth was successful.")
+            return True
+        else:
+            print("Wrong user or password.")
+            return False
+    else:
+        print("Whoops, looks like you forgot to add basic auth credentials.")
+
+
 # def exec_command():
 #     command = ['id']
 #     subprocess.run(command)
@@ -39,6 +54,7 @@ def error404(error):
     return 'Pretty empty, huh...'
 
 @post('/payload')
+@auth_basic(is_authenticated_user)
 def payload():
     print('hello')
 
