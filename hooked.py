@@ -6,8 +6,8 @@ A simple, general purpose webhook service which executes local commands.
 License: MIT (see LICENSE for details)
 """
 
-import sys
-from bottle import error, post, auth_basic, request, run
+import sys, functools
+from bottle import error, post, auth_basic, request, run, HTTPError
 
 __author__  = 'Florian Köhler'
 __version__ = '0.0.1'
@@ -32,29 +32,41 @@ def _cli_parse(args):
 # Bottle logic
 
 def is_authenticated_user(user, password):
-    if conf.userauth:
-        creds = conf.userauth.split(":")
+    creds = conf.userauth.split(":")
 
-        if user == creds[0] and password == creds[1]:
-            print("Basic Auth was successful.")
-            return True
-        else:
-            print("Wrong user or password.")
-            return False
+    if user == creds[0] and password == creds[1]:
+        print("Basic Auth was successful.")
+        return True
     else:
-        print("Whoops, looks like you forgot to add basic auth credentials.")
+        print("Wrong user or password.")
+        return False
 
+def my_basic_auth(check, realm="private", text="Access denied"):
+    def decorator(func):
 
-# def exec_command():
-#     command = ['id']
-#     subprocess.run(command)
+        @functools.wraps(func)
+        def wrapper(*a, **ka):
+            user, password = request.auth or (None, None)
+            if conf.userauth:
+                if user is None or not check(user, password):
+                    err = HTTPError(401, text)
+                    err.add_header('WWW-Authenticate', 'Basic realm="%s"' % realm)
+                    return err
+                return func(*a, **ka)
+            else:
+                print("no auth required")
+                return func(*a, **ka)
+
+        return wrapper
+
+    return decorator
 
 @error(404)
 def error404(error):
     return 'Pretty empty, huh...'
 
 @post('/payload')
-@auth_basic(is_authenticated_user)
+@my_basic_auth(is_authenticated_user)
 def payload():
     print('hello')
 
