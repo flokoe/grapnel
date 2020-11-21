@@ -10,7 +10,7 @@ import sys, functools, hmac, hashlib, subprocess
 from bottle import error, post, request, run, HTTPError
 
 __author__  = 'Florian Köhler'
-__version__ = '0.0.1'
+__version__ = '0.1.0'
 __license__ = 'MIT'
 
 # Command Line Interface
@@ -118,4 +118,4 @@ def payload():
 if __name__ == '__main__':
     conf = _cli_parse(sys.argv)
 
-    run(host=conf.bind, port=conf.port, reloader=True)
+    run(server='bjoern', host=conf.bind, port=conf.port)
