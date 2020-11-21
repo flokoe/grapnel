@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 A simple, general purpose webhook service which executes local commands.
@@ -10,7 +10,7 @@ import sys, functools, hmac, hashlib, subprocess
 from bottle import error, post, request, run, HTTPError
 
 __author__  = 'Florian Köhler'
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 __license__ = 'MIT'
 
 # Command Line Interface
