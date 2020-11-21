@@ -2,6 +2,12 @@
 
 A simple, general purpose webhook service which executes local commands.
 
+## Requirements
+
+- [bjoern](https://github.com/jonashaag/bjoern)
+
+## Usage
+
 ```plain
 usage: hooked.py [options]
 
