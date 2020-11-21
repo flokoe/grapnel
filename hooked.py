@@ -74,9 +74,14 @@ def payload():
             print("Exiting.")
             sys.exit(1)
 
-        h = hmac.new(bytes(conf.secret, 'utf-8'), json.dumps(request.json).encode('utf-8'), hashlib.sha256)
-        print("Git Hub:", request.headers.get('X-Hub-Signature-256'))
-        print("my hash:", "sha256=" + h.hexdigest())
+        signature_header = request.headers.get('X-Hub-Signature-256')
+        github_hash = signature_header.split("=")
+
+        h = hmac.new(bytes(conf.secret, 'utf-8'), request.body.read(), hashlib.sha256)
+        local_hash = h.hexdigest()
+
+        if github_hash[1] == local_hash:
+            print("verifiziert")
 
 if __name__ == '__main__':
     conf = _cli_parse(sys.argv)
