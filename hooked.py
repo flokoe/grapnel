@@ -6,7 +6,7 @@ A simple, general purpose webhook service which executes local commands.
 License: MIT (see LICENSE for details)
 """
 
-import sys, functools, hmac, hashlib
+import sys, functools, hmac, hashlib, subprocess
 from bottle import error, post, request, run, HTTPError
 
 __author__  = 'Florian Köhler'
@@ -23,15 +23,17 @@ def _cli_parse(args):
     parser.add_argument("-p", "--port", default=8080, type=int, help="bind service to PORT (Default: 8080)")
     parser.add_argument("-s", "--secret", type=str, help="secret for calculating 'X-Hub-Signature' and 'X-Hub-Signature-256' header or to use as a token in 'Authorization' header")
     parser.add_argument("-d", "--domain", type=str, help="domain/hostname which should be present in 'Host' header")
-    parser.add_argument("-u", "--userauth", type=str, help="basic auth credentials in form of 'user:password'")
-    parser.add_argument("--no-auth", action="store_true", help="Enables command execution without authorization header")
+    parser.add_argument("-a", "--basicauth", type=str, help="basic auth credentials in form of 'user:password'")
+    parser.add_argument("--no-auth", action="store_true", help="enables command execution without authorization header")
+    parser.add_argument("-u", "--sudo-user", type=str, help="user that should be used by sudo")
+    parser.add_argument("-c", dest="user_command", help="command and it's options that should be executed, needs to be ONE string")
 
     return parser.parse_args(args[1:])
 
 # Bottle logic
 
 def is_authenticated_user(user, password):
-    creds = conf.userauth.split(":")
+    creds = conf.basicauth.split(":")
 
     if user == creds[0] and password == creds[1]:
         print("Basic Auth was successful.")
@@ -46,7 +48,7 @@ def my_basic_auth(check, realm="private", text="Access denied"):
         @functools.wraps(func)
         def wrapper(*a, **ka):
             user, password = request.auth or (None, None)
-            if conf.userauth:
+            if conf.basicauth:
                 if user is None or not check(user, password):
                     err = HTTPError(401, text)
                     err.add_header('WWW-Authenticate', 'Basic realm="%s"' % realm)
@@ -63,7 +65,9 @@ def my_basic_auth(check, realm="private", text="Access denied"):
 def execute_command():
     print("execute...")
 
+    sudo_args = ["sudo", "-u", conf.sudo_user]
 
+    subprocess.run(sudo_args + conf.user_command.split())
 
 def signature_check(header):
     if not conf.secret:
