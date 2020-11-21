@@ -24,6 +24,7 @@ def _cli_parse(args):
     parser.add_argument("-s", "--secret", type=str, help="secret for calculating 'X-Hub-Signature' and 'X-Hub-Signature-256' header or to use as a token in 'Authorization' header")
     parser.add_argument("-d", "--domain", type=str, help="domain/hostname which should be present in 'Host' header")
     parser.add_argument("-u", "--userauth", type=str, help="basic auth credentials in form of 'user:password'")
+    parser.add_argument("--no-auth", action="store_true", help="Enables command execution without authorization header")
 
     return parser.parse_args(args[1:])
 
@@ -59,6 +60,9 @@ def my_basic_auth(check, realm="private", text="Access denied"):
 
     return decorator
 
+def execute_command():
+    print("execute...")
+
 def signature_check(header):
     if not conf.secret:
         print(f"'{header}' found, but no secret is specified.")
@@ -80,6 +84,7 @@ def signature_check(header):
 
     if signature[1] == local_hash:
         print(f"Authorized with {signature[0]}.")
+        execute_command()
     else:
         print("Authorization failed.")
 
@@ -101,6 +106,8 @@ def payload():
 
     else:
         print("No authorization.")
+        if conf.no_auth:
+            execute_command()
 
 if __name__ == '__main__':
     conf = _cli_parse(sys.argv)
