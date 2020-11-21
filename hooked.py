@@ -59,26 +59,27 @@ def my_basic_auth(check, realm="private", text="Access denied"):
 
     return decorator
 
-def secret_check(header):
+def signature_check(header):
     if not conf.secret:
         print(f"'{header}' found, but no secret is specified.")
 
-def signature_check(header):
-    secret_check(header)
+    if header == 'Authorization':
+        signature = request.headers.get(header).split()
+        local_hash = conf.secret
+    else:
+        signature = request.headers.get(header).split("=")
 
-    signature = request.headers.get(header).split("=")
+        def algo(al):
+            if al == 'sha256':
+                return hashlib.sha256
+            else:
+                return hashlib.sha1
 
-    def algo(al):
-        if al == 'sha256':
-            return hashlib.sha256
-        else:
-            return hashlib.sha1
-
-    h = hmac.new(bytes(conf.secret, 'utf-8'), request.body.read(), algo(signature[0]))
-    local_hash = h.hexdigest()
+        h = hmac.new(bytes(conf.secret, 'utf-8'), request.body.read(), algo(signature[0]))
+        local_hash = h.hexdigest()
 
     if signature[1] == local_hash:
-        print(f'Authorized with {signature[0]}')
+        print(f"Authorized with {signature[0]}.")
     else:
         print("Authorization failed.")
 
@@ -96,14 +97,7 @@ def payload():
         signature_check('X-Hub-Signature')
 
     elif request.headers.get('Authorization'):
-        secret_check('Authorization')
-
-        token = request.headers.get('Authorization').split()
-
-        if token[1] == conf.secret:
-            print("Authorized with token.")
-        else:
-            print("Authorization failed.")
+        signature_check('Authorization')
 
     else:
         print("No authorization.")
