@@ -63,13 +63,15 @@ def my_basic_auth(check, realm="private", text="Access denied"):
 def execute_command():
     print("execute...")
 
+
+
 def signature_check(header):
     if not conf.secret:
         print(f"'{header}' found, but no secret is specified.")
 
     if header == 'Authorization':
         signature = request.headers.get(header).split()
-        local_hash = conf.secret
+        digest = conf.secret
     else:
         signature = request.headers.get(header).split("=")
 
@@ -80,9 +82,9 @@ def signature_check(header):
                 return hashlib.sha1
 
         h = hmac.new(bytes(conf.secret, 'utf-8'), request.body.read(), algo(signature[0]))
-        local_hash = h.hexdigest()
+        digest = h.hexdigest()
 
-    if signature[1] == local_hash:
+    if signature[1] == digest:
         print(f"Authorized with {signature[0]}.")
         execute_command()
     else:
@@ -95,13 +97,13 @@ def error404(error):
 @post('/payload')
 @my_basic_auth(is_authenticated_user)
 def payload():
-    if request.headers.get('X-Hub-Signature-256'):
+    if 'X-Hub-Signature-256' in request.headers:
         signature_check('X-Hub-Signature-256')
 
-    elif request.headers.get('X-Hub-Signature'):
+    elif 'X-Hub-Signature' in request.headers:
         signature_check('X-Hub-Signature')
 
-    elif request.headers.get('Authorization'):
+    elif 'Authorization' in request.headers:
         signature_check('Authorization')
 
     else:
