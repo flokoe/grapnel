@@ -6,7 +6,7 @@ A simple, general purpose webhook service which executes local commands.
 License: MIT (see LICENSE for details)
 """
 
-import sys, functools
+import sys, functools, hmac, hashlib
 from bottle import error, post, auth_basic, request, run, HTTPError
 
 __author__  = 'Florian Köhler'
@@ -22,8 +22,8 @@ def _cli_parse(args):
     parser.add_argument("-b", "--bind", metavar="ADDRESS", default="localhost", type=str, help="bind service to ADDRESS (Default: localhost)")
     parser.add_argument("-p", "--port", default=8080, type=int, help="bind service to PORT (Default: 8080)")
     parser.add_argument("-a", "--adapter", default="github", type=str, help="use adapter ADAPTER. Currently 'github' (default) and 'generic'")
-    parser.add_argument("-s", "--secret", type=str, help="secret SECRET for calculating 'X-Hub-Signature-256' header (only if adapter is 'github')")
-    parser.add_argument("-t", "--token", type=str, help="token for 'Authorization' header (only if adapter is 'generic')")
+    parser.add_argument("-s", "--secret", type=str, help="secret SECRET for calculating 'X-Hub-Signature-256' header (required if adapter is 'github')")
+    parser.add_argument("-t", "--token", type=str, help="token for 'Authorization' header (optional and only if adapter is 'generic')")
     parser.add_argument("-d", "--domain", type=str, help="domain/hostname which should be present in 'Host' header")
     parser.add_argument("-u", "--userauth", type=str, help="basic auth credentials in form of 'user:password'")
 
@@ -68,7 +68,15 @@ def error404(error):
 @post('/payload')
 @my_basic_auth(is_authenticated_user)
 def payload():
-    print('hello')
+    if conf.adapter == 'github':
+        if not conf.secret:
+            print("Adapter is 'github', but no secret is specified.")
+            print("Exiting.")
+            sys.exit(1)
+
+        h = hmac.new(conf.secret, request.json, hashlib.sha256)
+        print("Git Hub:", request.headers.get('X-Hub-Signature-256'))
+        print("my hash:", h.hexdigest())
 
 if __name__ == '__main__':
     conf = _cli_parse(sys.argv)
