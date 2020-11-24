@@ -27,4 +27,6 @@ optional arguments:
   -u SUDO_USER, --sudo-user SUDO_USER
                         user that should be used by sudo
   -c USER_COMMAND       command and it's options that should be executed, needs to be ONE string
+  -f CONFIG, --config CONFIG
+                        location of config file (Default: /etc/hooked.ini)
 ```
