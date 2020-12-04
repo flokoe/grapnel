@@ -6,11 +6,11 @@ A simple, general purpose webhook service which executes local commands.
 License: MIT (see LICENSE for details)
 """
 
-import sys, functools, hmac, hashlib, subprocess
+import sys, functools, hmac, hashlib, subprocess, requests, json
 from bottle import default_app, error, post, request, run, HTTPError
 
 __author__  = 'Florian Köhler'
-__version__ = '0.3.0'
+__version__ = '0.4.0'
 __license__ = 'MIT'
 
 # Command Line Interface
@@ -104,6 +104,30 @@ def my_basic_auth(check, realm="private", text="Access denied"):
 
     return decorator
 
+def send_post(exitcode):
+    url = conf['webhook.url']
+    payload = ''
+
+    if exitcode is not None:
+        if 'webhook.payload_error' in conf:
+            payload = json.loads(conf['webhook.payload_error'])
+        elif 'webhook.payload_error_file' in conf:
+            with open(conf['webhook.payload_error_file'], 'r') as read_file:
+                payload = json.load(read_file)
+        else:
+            print('No payload for error found.')
+    else:
+        if 'webhook.payload_success' in conf:
+            payload = json.loads(conf['webhook.payload_success'])
+        elif 'webhook.payload_success_file' in conf:
+            print('file')
+            with open(conf['webhook.payload_success_file'], 'r') as read_file:
+                payload = json.load(read_file)
+        else:
+            print('No payload for success found.')
+
+    requests.post(url, json=payload)
+
 def execute_command():
     print("execute...")
 
@@ -113,7 +137,16 @@ def execute_command():
     else:
         command = conf['hooked.user_command'].split()
 
-    subprocess.run(command)
+    try:
+        subprocess.run(command, capture_output=True, check=True)
+    except subprocess.CalledProcessError as err:
+        print('Command returned non-zero exit status.')
+
+        if 'webhook.url' in conf:
+            send_post(err.returncode)
+    else:
+        if 'webhook.url' in conf:
+            send_post(None)
 
 def signature_check(header):
     if 'hooked.secret' not in conf:
@@ -160,7 +193,6 @@ def payload():
         print("No authorization.")
         if conf['hooked.no_auth']:
             execute_command()
-
 
 generate_config(sys.argv)
 conf = default_app().config
