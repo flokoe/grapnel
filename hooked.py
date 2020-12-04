@@ -10,7 +10,7 @@ import sys, functools, hmac, hashlib, subprocess, requests, json
 from bottle import default_app, error, post, request, run, HTTPError
 
 __author__  = 'Florian Köhler'
-__version__ = '0.4.0'
+__version__ = '0.4.1'
 __license__ = 'MIT'
 
 # Command Line Interface
@@ -120,7 +120,6 @@ def send_post(exitcode):
         if 'webhook.payload_success' in conf:
             payload = json.loads(conf['webhook.payload_success'])
         elif 'webhook.payload_success_file' in conf:
-            print('file')
             with open(conf['webhook.payload_success_file'], 'r') as read_file:
                 payload = json.load(read_file)
         else:
