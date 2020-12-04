@@ -10,7 +10,7 @@ import sys, functools, hmac, hashlib, subprocess
 from bottle import default_app, error, post, request, run, HTTPError
 
 __author__  = 'Florian Köhler'
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 __license__ = 'MIT'
 
 # Command Line Interface
@@ -25,7 +25,7 @@ def cli_parse(args):
     parser.add_argument("-d", "--domain", type=str, help="domain/hostname which should be present in 'Host' header")
     parser.add_argument("-a", "--basicauth", type=str, help="basic auth credentials in form of 'user:password'")
     parser.add_argument("--no-auth", action="store_true", help="enables command execution without authorization header")
-    parser.add_argument("-u", "--sudo-user", type=str, help="user that should be used by sudo")
+    parser.add_argument("-u", "--sudo-user", type=str, help="user that should be used by sudo. If omitted uses user which runs the script (no sudo)")
     parser.add_argument("-c", dest="user_command", help="command and it's options that should be executed, needs to be ONE string")
     parser.add_argument("-f", "--config", type=str, help="location of config file (Default: /etc/hooked.ini)")
 
@@ -107,9 +107,13 @@ def my_basic_auth(check, realm="private", text="Access denied"):
 def execute_command():
     print("execute...")
 
-    sudo_args = ["sudo", "-u", conf['hooked.sudo_user']]
+    if 'hooked.sudo_user' in conf:
+        sudo_args = ["sudo", "-u", conf['hooked.sudo_user']]
+        command = sudo_args + conf['hooked.user_command'].split()
+    else:
+        command = conf['hooked.user_command'].split()
 
-    subprocess.run(sudo_args + conf['hooked.user_command'].split())
+    subprocess.run(command)
 
 def signature_check(header):
     if 'hooked.secret' not in conf:

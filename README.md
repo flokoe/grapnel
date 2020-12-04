@@ -25,7 +25,7 @@ optional arguments:
                         basic auth credentials in form of 'user:password'
   --no-auth             enables command execution without authorization header
   -u SUDO_USER, --sudo-user SUDO_USER
-                        user that should be used by sudo
+                        user that should be used by sudo. If omitted uses user which runs the script (no sudo)
   -c USER_COMMAND       command and it's options that should be executed, needs to be ONE string
   -f CONFIG, --config CONFIG
                         location of config file (Default: /etc/hooked.ini)
