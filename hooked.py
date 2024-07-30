@@ -104,7 +104,7 @@ def my_basic_auth(check, realm="private", text="Access denied"):
 
     return decorator
 
-def send_post(exitcode):
+def send_post(exitcode, branch):
     url = conf['webhook.url']
     payload = ''
 
@@ -125,16 +125,19 @@ def send_post(exitcode):
         else:
             print('No payload for success found.')
 
+    payload['attachments'][0]['blocks'][0]['text']['text'] = payload['attachments'][0]['blocks'][0]['text']['text'].replace("BRANCH", branch)
     requests.post(url, json=payload)
 
-def execute_command():
+def execute_command(branch):
     print("execute...")
+
+    command_string = conf['hooked.user_command'].replace("BRANCH", branch)
 
     if 'hooked.sudo_user' in conf:
         sudo_args = ["sudo", "-u", conf['hooked.sudo_user']]
-        command = sudo_args + conf['hooked.user_command'].split()
+        command = sudo_args + command_string.split()
     else:
-        command = conf['hooked.user_command'].split()
+        command = command_string.split()
 
     try:
         subprocess.run(command, capture_output=True, check=True)
@@ -142,12 +145,12 @@ def execute_command():
         print('Command returned non-zero exit status.')
 
         if 'webhook.url' in conf:
-            send_post(err.returncode)
+            send_post(err.returncode, branch)
     else:
         if 'webhook.url' in conf:
-            send_post(None)
+            send_post(None, branch)
 
-def signature_check(header):
+def signature_check(header, branch):
     if 'hooked.secret' not in conf:
         print(f"'{header}' found, but no secret is specified.")
 
@@ -168,7 +171,7 @@ def signature_check(header):
 
     if signature[1] == digest:
         print(f"Authorized with {signature[0]}.")
-        execute_command()
+        execute_command(branch)
     else:
         print("Authorization failed.")
 
@@ -179,19 +182,21 @@ def error404(error):
 @post('/payload')
 @my_basic_auth(is_authenticated_user)
 def payload():
+    branch = request.forms.get('branch')
+
     if 'X-Hub-Signature-256' in request.headers:
-        signature_check('X-Hub-Signature-256')
+        signature_check('X-Hub-Signature-256', branch)
 
     elif 'X-Hub-Signature' in request.headers:
-        signature_check('X-Hub-Signature')
+        signature_check('X-Hub-Signature', branch)
 
     elif 'Authorization' in request.headers:
-        signature_check('Authorization')
+        signature_check('Authorization', branch)
 
     else:
         print("No authorization.")
         if conf['hooked.no_auth']:
-            execute_command()
+            execute_command(branch)
 
 generate_config(sys.argv)
 conf = default_app().config
